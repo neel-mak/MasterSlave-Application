@@ -286,6 +286,66 @@ public class MasterBot
 						}
                     }
                 }
+                else if(serverCmd[0].equals("geoipscan"))
+                {
+                    if(serverCmd.length<3)
+                    {
+                        System.out.println("*****Error: geoipscan expects minimum 2 arguments");
+                    }
+                    else
+                    {
+						if(serverCmd[1] != null && serverCmd[2]!= null)
+						{
+							Iterator<sConnection> i = connectionList.iterator();
+							int Argument;
+							if (serverCmd[1].matches("^(25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}$") == true){
+								Argument=1; }
+							else if(serverCmd[1].equals("all") ) {	Argument=3; }
+							else {	Argument=2;}
+							sConnection currentSocket = null;
+							switch(Argument)
+							{
+							    case 1:
+								while(i.hasNext())
+								{
+                                    currentSocket = i.next();
+									if(currentSocket.HostName.equals(serverCmd[1]))
+									{
+										ScanOperations ipscan = new ScanOperations(5,currentSocket.Socket,"geoipscan "+ serverCmd[2]);
+										Thread t1=new Thread(ipscan);
+										t1.start();
+									}
+                                }
+                                break;
+							    case 2:
+								while(i.hasNext())
+								{
+                                    currentSocket = i.next();
+                                    if(currentSocket.HostIP.equals(serverCmd[1]))
+                                    {
+										ScanOperations ipscan = new ScanOperations(6,currentSocket.Socket,"geoipscan "+ serverCmd[2]);
+										Thread t1=new Thread(ipscan);
+										t1.start();
+									}
+                                }
+                                break;
+							    case 3:
+								while(i.hasNext())
+								{
+                                    currentSocket = i.next();
+									ScanOperations ipscan = new ScanOperations(7,currentSocket.Socket,"geoipscan "+ serverCmd[2]);
+									Thread t1=new Thread(ipscan);
+									t1.start();
+                                }
+                                break;
+							}
+						}
+						else
+						{
+							System.out.println("*****Error: No proper arguments for geoipscan");
+						}
+                    }
+                }
                 else if(serverCmd[0].equals("disconnect"))
                 {
                     if(serverCmd.length<3)
@@ -456,8 +516,9 @@ class ScanOperations extends Thread
 		try
         {
 			netIn = new BufferedReader(new InputStreamReader(currentSoc.getInputStream()));
-		    String theLine = netIn.readLine();
-		    System.out.println(theLine);
+		    String theLine = "";
+		    while((theLine=netIn.readLine())!=null)
+		    	System.out.println(theLine);
 		}
         catch(IOException e)
         {

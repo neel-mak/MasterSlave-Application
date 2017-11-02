@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.*;
 import java.util.*;
 import java.text.*;
 
@@ -240,6 +241,12 @@ public class SlaveBot
                         Thread t1=new Thread(ipscan);
                         t1.start();
                     }
+                    else if(Cmd[0].equals("geoipscan"))
+                    {
+                        Scans ipscan = new Scans(3,SCT,Cmd);
+                        Thread t1=new Thread(ipscan);
+                        t1.start();
+                    }
                     else
                     {
                         System.out.println("*****Error: Not a proper command " +  Cmd[0]);
@@ -272,11 +279,14 @@ public class SlaveBot
 		{
 			if(otp==1)
             {
-				ipScan();
+				ipScan(1);
 			}
 			if(otp==2)
 			{
 				tcpScan();
+			}
+			if(otp==3){
+				ipScan(2);
 			}
 
 		}
@@ -319,24 +329,36 @@ public class SlaveBot
 				System.err.println("*****Error: Unable to connect to master");
 			}
 		}
-		private void ipScan()
+		private void ipScan(int ot)
 		{
 			try
 			{
 				String ipRange[]=msg[1].split("-");;
 				String start = ipRange[0];
 				String end = ipRange[1];
+				
+				if(!validIP(start)){
+					System.out.println("Invalid start IP range\n");
+					return;
+				}
+				if(!validIP(end)){
+					System.out.println("Invalid end IP range\n");
+					return;
+				}
+				
 				while(!end.equals(start))
                 {
 					if(ipPing(start))
 					{
-						IP.add(start);
+						if(ot==1) IP.add(start);
+						if(ot==2) IP.add(start+" "+getHTML("http://ip-api.com/line/"+start));
 					}
 					start=getNextIPV4Address(start);
 				}
 				if(ipPing(end))
 				{
-					IP.add(start);
+					if(ot==1) IP.add(end);
+					if(ot==2) IP.add(end+" "+getHTML("http://ip-api.com/line/"+start));
 				}
 			}
 			catch(ArrayIndexOutOfBoundsException e)
@@ -354,12 +376,18 @@ public class SlaveBot
 				System.out.println("****** Invalid IP\n****** Exiting IP Scan");
 				return;
 			}
+			catch(Exception e)
+			{
+				System.out.println("***** Unable to perform geoScan. www.ip-api.com is not reachable on this machine. Please check network connection.\n ");
+				return;
+			}
 			for( int j = 0; j< IP.size(); j++)
 			{
 				commaSepValueBuilder.append(IP.get(j));
 				if( j != IP.size()-1)
 				{
-					commaSepValueBuilder.append(", ");
+					if(ot==1) commaSepValueBuilder.append(", ");
+					if(ot==2) commaSepValueBuilder.append("\n");
 				}
 			}
 			PrintWriter NO;
@@ -371,7 +399,7 @@ public class SlaveBot
 			}
             catch(IOException e)
             {
-				System.err.println("*****Error: Unable to send datato master");
+				System.err.println("*****Error: Unable to send data to master");
 			}
 		}
         private  boolean PortRangeCheck(String TN, int Port_value)
@@ -436,4 +464,59 @@ public class SlaveBot
             }
             return PING;
         }
+        
+        public static boolean validIP (String ip) {
+		    try {
+		        if ( ip == null || ip.isEmpty() ) {
+		            return false;
+		        }
+
+		        String[] parts = ip.split( "\\." );
+		        if ( parts.length != 4 ) {
+		            return false;
+		        }
+
+		        for ( String s : parts ) {
+		            int i = Integer.parseInt( s );
+		            if ( (i < 0) || (i > 255) ) {
+		                return false;
+		            }
+		        }
+		        if ( ip.endsWith(".") ) {
+		            return false;
+		        }
+
+		        return true;
+		    } catch (NumberFormatException nfe) {
+		        return false;
+		    }
+		}
+	
+		private static String getHTML(String urlToRead) throws Exception 
+		{
+		      StringBuilder result = new StringBuilder();
+		      int count=0;
+		      URL url = new URL(urlToRead);
+		      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		      conn.setRequestMethod("GET");
+		      BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		      String line;
+		      while ((line = rd.readLine()) != null)
+		      {  	 
+		    	  if(line.contains("fail")){
+		    		  result.append("");
+		    		  break;	    		  
+		    	  }
+		    	  if(count!=0 && count!=2 &&count!=3 && count!=9 && count!=13 && count!=11 && count!=12){
+		    		  result.append(line+", ");
+		    	  }
+		    	  if(count==12){
+		    		  result.append(line+"");
+		    	  }
+		    	  count++;
+		      }
+		      rd.close();
+		      return result.toString();
+	   }
+        
 	}
